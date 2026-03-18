@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    volumes:
+      - db-data:/var/lib/postgresql/data 
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD} 
+    networks:
+      - portfolio-net
+    healthcheck: 
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  cache:
+    image: redis:alpine
+    networks:
+      - portfolio-net
+
+  backend:
+    build: ./backend
+    depends_on:
+      db:
+        condition: service_healthy 
+    networks:
+      - portfolio-net
+    environment:
+      - DB_HOST=db
+      - REDIS_HOST=cache
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    networks:
+      - portfolio-net
+
+networks:
+  portfolio-net: 
+    driver: bridge
+
+volumes:
+  db-data:
